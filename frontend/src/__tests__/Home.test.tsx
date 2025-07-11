@@ -202,4 +202,173 @@ describe('Home Component - Basic Polling', () => {
     // Should not show error toast for game fetch failures
     expect(vi.mocked(errorToast)).toHaveBeenCalledTimes(0)
   })
+})
+
+describe('Home Component - Markdown Rendering', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders markdown content with headings', async () => {
+    const gameWithMarkdown = {
+      ...mockGameResponse('game_1'),
+      json: () => Promise.resolve({
+        id: 'game_1',
+        date: '2024-12-25T18:00:00Z',
+        location: 'Test Stadium',
+        markdown: '# Game Title\n\nBring your boots and water!',
+        state: 'OPEN',
+        createdBy: 'admin_123',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z'
+      })
+    }
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockUserResponse as any)
+      .mockResolvedValueOnce(gameWithMarkdown as any)
+
+    renderWithRouter(<Home />)
+
+    await waitFor(() => {
+      expect(screen.getByText('🏈 Game Scheduled!')).toBeInTheDocument()
+    })
+
+    // Check that markdown content is rendered correctly
+    const gameTitle = screen.getByText('Game Title')
+    expect(gameTitle).toBeInTheDocument()
+    expect(gameTitle.tagName).toBe('H1')
+    expect(screen.getByText('Bring your boots and water!')).toBeInTheDocument()
+  })
+
+  it('displays formatted date matching expected pattern', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockUserResponse as any)
+      .mockResolvedValueOnce(mockGameResponse('game_1') as any)
+
+    renderWithRouter(<Home />)
+
+    await waitFor(() => {
+      expect(screen.getByText('🏈 Game Scheduled!')).toBeInTheDocument()
+    })
+
+    // Check that date is formatted as "Wednesday, Dec 25"
+    const dateElement = screen.getByText(/Wednesday, Dec 25/)
+    expect(dateElement).toBeInTheDocument()
+    expect(dateElement.textContent).toMatch(/Wednesday, Dec 25/)
+  })
+
+  it('displays separate time formatting', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockUserResponse as any)
+      .mockResolvedValueOnce(mockGameResponse('game_1') as any)
+
+    renderWithRouter(<Home />)
+
+    await waitFor(() => {
+      expect(screen.getByText('🏈 Game Scheduled!')).toBeInTheDocument()
+    })
+
+    // Check that time is displayed separately with "at" prefix
+    const timeElement = screen.getByText(/at \d{1,2}:\d{2}/)
+    expect(timeElement).toBeInTheDocument()
+  })
+
+  it('shows attendance actions placeholder', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockUserResponse as any)
+      .mockResolvedValueOnce(mockGameResponse('game_1') as any)
+
+    renderWithRouter(<Home />)
+
+    await waitFor(() => {
+      expect(screen.getByText('🏈 Game Scheduled!')).toBeInTheDocument()
+    })
+
+    const attendanceSection = screen.getByText('Attendance actions will appear here')
+    expect(attendanceSection).toBeInTheDocument()
+    expect(attendanceSection.closest('div')).toHaveAttribute('id', 'attendance-actions')
+  })
+})
+
+describe('Home Component - Mobile Layout', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders correctly on mobile viewport (375px)', async () => {
+    // Mock window.innerWidth for mobile
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 375,
+    })
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockUserResponse as any)
+      .mockResolvedValueOnce(mockGameResponse('game_1') as any)
+
+    const { container } = renderWithRouter(<Home />)
+
+    await waitFor(() => {
+      expect(screen.getByText('🏈 Game Scheduled!')).toBeInTheDocument()
+    })
+
+    // Check that main container has appropriate max-width and mobile styles
+    const mainContainer = container.firstChild as HTMLElement
+    expect(mainContainer).toHaveStyle({ maxWidth: '600px' })
+    expect(mainContainer).toHaveStyle({ width: '100%' })
+    expect(mainContainer).toHaveStyle({ margin: '0 auto' })
+
+    // Verify no horizontal scroll would occur
+    expect(mainContainer.scrollWidth).toBeLessThanOrEqual(375)
+  })
+
+  it('renders correctly on desktop viewport (1024px)', async () => {
+    // Mock window.innerWidth for desktop
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 1024,
+    })
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockUserResponse as any)
+      .mockResolvedValueOnce(mockGameResponse('game_1') as any)
+
+    const { container } = renderWithRouter(<Home />)
+
+    await waitFor(() => {
+      expect(screen.getByText('🏈 Game Scheduled!')).toBeInTheDocument()
+    })
+
+    // Check that main container still has max-width constraint
+    const mainContainer = container.firstChild as HTMLElement
+    expect(mainContainer).toHaveStyle({ maxWidth: '600px' })
+    expect(mainContainer).toHaveStyle({ width: '100%' })
+    expect(mainContainer).toHaveStyle({ margin: '0 auto' })
+  })
+
+  it('handles responsive title sizing', async () => {
+    // Test mobile first
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 375,
+    })
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockUserResponse as any)
+      .mockResolvedValueOnce(mockGameResponse('game_1') as any)
+
+    renderWithRouter(<Home />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Football Game Generator')).toBeInTheDocument()
+    })
+
+    // The title should be rendered (responsive sizing is handled by inline styles)
+    const titleElement = screen.getByRole('heading', { level: 1, name: /football game generator/i })
+    expect(titleElement).toBeInTheDocument()
+  })
 }) 

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { User, Game } from '../types/profile'
 import { API_ENDPOINTS } from '../config/api'
 import { errorToast, successToast } from '../utils/errorToast'
+import MarkdownRenderer from '../components/MarkdownRenderer'
 
 const Home: React.FC = () => {
   const { logout, token } = useAuth()
@@ -99,19 +100,46 @@ const Home: React.FC = () => {
     const date = new Date(dateString)
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
     })
   }
 
   return (
-    <div style={{ padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Football Game Generator</h1>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+    <div style={{ 
+      padding: '20px',
+      maxWidth: '600px',
+      margin: '0 auto',
+      width: '100%'
+    }}>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '10px'
+      }}>
+        <h1 style={{ 
+          margin: 0,
+          fontSize: window.innerWidth <= 425 ? '1.5rem' : '2rem'
+        }}>
+          Football Game Generator
+        </h1>
+        <div style={{ 
+          display: 'flex', 
+          gap: '10px', 
+          alignItems: 'center', 
+          flexWrap: 'wrap',
+          justifyContent: window.innerWidth <= 425 ? 'center' : 'flex-end'
+        }}>
           {isLoadingUser ? (
             <span>Loading...</span>
           ) : (
@@ -156,26 +184,47 @@ const Home: React.FC = () => {
               padding: '20px', 
               backgroundColor: '#e8f5e8', 
               borderRadius: '8px',
-              border: '1px solid #28a745'
+              border: '1px solid #28a745',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '15px'
             }}>
-              <h4 style={{ margin: '0 0 10px 0', color: '#28a745' }}>
+              <h4 style={{ margin: '0', color: '#28a745' }}>
                 🏈 Game Scheduled!
               </h4>
-              <p><strong>Date:</strong> {formatDate(openGame.date)}</p>
-              <p><strong>Location:</strong> {openGame.location}</p>
-              <div style={{ marginTop: '15px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <p style={{ margin: 0 }}>
+                  <strong>Date:</strong> {formatDate(openGame.date)}
+                </p>
+                <p style={{ margin: 0 }}>
+                  <strong>Time:</strong> at {formatTime(openGame.date)}
+                </p>
+                <p style={{ margin: 0 }}>
+                  <strong>Location:</strong> {openGame.location}
+                </p>
+              </div>
+              <div>
                 <strong>Details:</strong>
                 <div style={{ 
                   marginTop: '10px', 
-                  padding: '10px', 
+                  padding: '15px', 
                   backgroundColor: 'white', 
                   borderRadius: '4px',
-                  fontFamily: 'monospace',
                   fontSize: '14px',
-                  whiteSpace: 'pre-wrap'
+                  lineHeight: '1.5'
                 }}>
-                  {openGame.markdown}
+                  <MarkdownRenderer markdown={openGame.markdown} />
                 </div>
+              </div>
+              <div id="attendance-actions" style={{ 
+                marginTop: '15px',
+                padding: '15px',
+                backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                borderRadius: '4px',
+                textAlign: 'center',
+                color: '#666'
+              }}>
+                Attendance actions will appear here
               </div>
             </div>
           ) : (
