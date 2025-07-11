@@ -3,13 +3,15 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import { UserService } from './services/userService.js'
 import { GameService } from './services/gameService.js'
+import { AttendanceService } from './services/attendanceService.js'
 import { runMigrations, closeDatabase } from './database/migrations.js'
-import { CreateProfileRequest, CreateGameRequest } from './types/index.js'
+import { CreateProfileRequest, CreateGameRequest, RegisterAttendanceRequest } from './types/index.js'
 
 dotenv.config()
 
 const userService = new UserService()
 const gameService = new GameService()
+const attendanceService = new AttendanceService()
 
 // Mock token decode - extract userId from token
 function decodeToken(token: string): string | null {
@@ -253,6 +255,71 @@ function createApp() {
       res.json(openGame)
     } catch (error) {
       console.error('Error fetching open game:', error)
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
+  // GET /api/game/:id/attendance - get game roster
+  app.get('/api/game/:id/attendance', async (req: Request, res: Response) => {
+    try {
+      const gameId = req.params.id
+      
+      // Validate game ID format (UUID)
+      if (!gameId || !gameId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
+        return res.status(400).json({ error: 'Invalid game ID format' })
+      }
+
+      const roster = await attendanceService.getRoster(gameId)
+      res.json(roster)
+    } catch (error) {
+      console.error('Error fetching game roster:', error)
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
+  // POST /api/game/:id/attendance - register attendance
+  app.post('/api/game/:id/attendance', async (req: Request, res: Response) => {
+    try {
+      const gameId = req.params.id
+      const userId = req.userId
+      const attendanceData: RegisterAttendanceRequest = req.body
+      const { action } = attendanceData
+
+      // Validate game ID format (UUID)
+      if (!gameId || !gameId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
+        return res.status(400).json({ error: 'Invalid game ID format' })
+      }
+
+      // Validation
+      if (!action) {
+        return res.status(400).json({ 
+          error: 'Missing required field: action' 
+        })
+      }
+
+      const validActions = ['CONFIRMED', 'WAITING', 'OUT', 'LATE_CONFIRMED']
+      if (!validActions.includes(action)) {
+        return res.status(400).json({ 
+          error: 'action must be one of: CONFIRMED, WAITING, OUT, LATE_CONFIRMED' 
+        })
+      }
+
+      // Register attendance
+      const roster = await attendanceService.registerAttendance(userId, gameId, action)
+      res.json(roster)
+    } catch (error) {
+      console.error('Error registering attendance:', error)
+      
+      // Handle specific errors
+      if (error instanceof Error) {
+        if (error.message === 'Game not found') {
+          return res.status(404).json({ error: 'Game not found' })
+        }
+        if (error.message === 'Game is not open for attendance changes') {
+          return res.status(403).json({ error: 'Game is not open for attendance changes' })
+        }
+      }
+      
       res.status(500).json({ error: 'Internal server error' })
     }
   })

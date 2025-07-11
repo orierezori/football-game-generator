@@ -21,5 +21,5 @@ echo "Press Enter to continue..."
 "user_ya29.a0AS3"
 ADMIN
 read
-echo "UPDATE users SET role = 'ADMIN' WHERE id = (SELECT user_id FROM profiles WHERE nickname = 'King');
+echo "UPDATE users SET role = 'ADMIN' WHERE id = (SELECT user_id FROM profiles WHERE nickname = 'King');"
 psql football_game_generator 

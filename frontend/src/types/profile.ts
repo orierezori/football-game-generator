@@ -60,4 +60,25 @@ export interface CreateGameFormErrors {
   location?: string
   markdown?: string
   submit?: string
+}
+
+export type AttendanceStatus = 'CONFIRMED' | 'WAITING' | 'OUT' | 'LATE_CONFIRMED'
+
+export interface Attendance {
+  id: string
+  gameId: string
+  playerId: string
+  status: AttendanceStatus
+  createdAt: string
+  updatedAt: string
+  player: Profile
+}
+
+export interface GameRoster {
+  confirmed: Attendance[]
+  waiting: Attendance[]
+}
+
+export interface RegisterAttendanceRequest {
+  action: AttendanceStatus
 } 

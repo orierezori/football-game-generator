@@ -34,12 +34,26 @@ CREATE TABLE IF NOT EXISTS games (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create attendances table
+CREATE TABLE IF NOT EXISTS attendances (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  player_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL CHECK (status IN ('CONFIRMED', 'WAITING', 'OUT', 'LATE_CONFIRMED')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(game_id, player_id)
+);
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_nickname ON profiles(nickname);
 CREATE INDEX IF NOT EXISTS idx_games_state ON games(state);
 CREATE INDEX IF NOT EXISTS idx_games_date ON games(date);
 CREATE INDEX IF NOT EXISTS idx_games_created_by ON games(created_by);
+CREATE INDEX IF NOT EXISTS idx_attendances_game_id ON attendances(game_id);
+CREATE INDEX IF NOT EXISTS idx_attendances_player_id ON attendances(player_id);
+CREATE INDEX IF NOT EXISTS idx_attendances_status ON attendances(status);
 
 -- Create trigger to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -54,6 +68,7 @@ $$ language 'plpgsql';
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
 DROP TRIGGER IF EXISTS update_games_updated_at ON games;
+DROP TRIGGER IF EXISTS update_attendances_updated_at ON attendances;
 
 -- Create triggers
 CREATE TRIGGER update_users_updated_at 
@@ -66,4 +81,8 @@ CREATE TRIGGER update_profiles_updated_at
 
 CREATE TRIGGER update_games_updated_at 
   BEFORE UPDATE ON games 
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_attendances_updated_at 
+  BEFORE UPDATE ON attendances 
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 

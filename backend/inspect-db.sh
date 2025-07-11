@@ -50,4 +50,12 @@ psql football_game_generator -c "\d users"
 
 echo ""
 echo "Profiles table structure:"
-psql football_game_generator -c "\d profiles" 
+psql football_game_generator -c "\d profiles"
+
+echo ""
+echo "Games table structure:"
+psql football_game_generator -c "\d games"
+
+echo ""
+echo "Attendances table structure:"
+psql football_game_generator -c "\d attendances" 

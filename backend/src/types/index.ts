@@ -41,4 +41,24 @@ export interface CreateGameRequest {
   date: string
   location: string
   markdown: string
+}
+
+export type AttendanceStatus = 'CONFIRMED' | 'WAITING' | 'OUT' | 'LATE_CONFIRMED'
+
+export interface Attendance {
+  id: string
+  gameId: string
+  playerId: string
+  status: AttendanceStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RegisterAttendanceRequest {
+  action: AttendanceStatus
+}
+
+export interface GameRoster {
+  confirmed: (Attendance & { player: Profile })[]
+  waiting: (Attendance & { player: Profile })[]
 } 

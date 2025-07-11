@@ -25,4 +25,14 @@ export async function runMigrations() {
 export async function closeDatabase() {
   await pool.end()
   console.log('🔌 Database connection closed')
+}
+
+// Run migrations when script is executed directly
+if (process.argv[1] && process.argv[1].includes('migrations.ts')) {
+  runMigrations()
+    .then(() => closeDatabase())
+    .catch((error) => {
+      console.error('Migration failed:', error)
+      process.exit(1)
+    })
 } 

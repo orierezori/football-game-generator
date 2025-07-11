@@ -52,8 +52,32 @@ describe('CreateGameForm', () => {
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
   })
 
-  it('shows validation errors for empty fields', async () => {
+  it('has default values populated on load', () => {
     renderWithRouter(<CreateGameForm />)
+    
+    const dateInput = screen.getByLabelText(/date and time/i) as HTMLInputElement
+    const locationInput = screen.getByLabelText(/location/i) as HTMLInputElement
+    const descriptionInput = screen.getByLabelText(/game description/i) as HTMLTextAreaElement
+    
+    // Check that default values are set
+    expect(dateInput.value).toBeTruthy() // Should have a date value
+    expect(locationInput.value).toBe('@https://goo.gl/maps/mpu4fhencfLyNfAF9')
+    expect(descriptionInput.value).toContain('Hey guys,')
+    expect(descriptionInput.value).toContain('registration list for the next week')
+    expect(descriptionInput.value).toContain('For the new members, here\'s the location')
+  })
+
+  it('shows validation errors when fields are cleared', async () => {
+    renderWithRouter(<CreateGameForm />)
+    
+    // Clear all the default values
+    const dateInput = screen.getByLabelText(/date and time/i)
+    const locationInput = screen.getByLabelText(/location/i)
+    const descriptionInput = screen.getByLabelText(/game description/i)
+    
+    fireEvent.change(dateInput, { target: { value: '' } })
+    fireEvent.change(locationInput, { target: { value: '' } })
+    fireEvent.change(descriptionInput, { target: { value: '' } })
     
     const submitButton = screen.getByRole('button', { name: /create game/i })
     fireEvent.click(submitButton)
@@ -217,6 +241,10 @@ describe('CreateGameForm', () => {
   it('clears errors when user starts typing', async () => {
     renderWithRouter(<CreateGameForm />)
     
+    // Clear the location field to trigger validation error
+    const locationInput = screen.getByLabelText(/location/i)
+    fireEvent.change(locationInput, { target: { value: '' } })
+    
     const submitButton = screen.getByRole('button', { name: /create game/i })
     fireEvent.click(submitButton)
     
@@ -224,7 +252,7 @@ describe('CreateGameForm', () => {
       expect(screen.getByText(/location is required/i)).toBeInTheDocument()
     })
     
-    const locationInput = screen.getByLabelText(/location/i)
+    // Now type something to clear the error
     fireEvent.change(locationInput, { target: { value: 'Test' } })
     
     await waitFor(() => {

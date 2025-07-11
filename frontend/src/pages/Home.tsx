@@ -5,6 +5,7 @@ import { User, Game } from '../types/profile'
 import { API_ENDPOINTS } from '../config/api'
 import { errorToast, successToast } from '../utils/errorToast'
 import MarkdownRenderer from '../components/MarkdownRenderer'
+import { useAttendance } from '../hooks/useAttendance'
 
 const Home: React.FC = () => {
   const { logout, token } = useAuth()
@@ -14,6 +15,13 @@ const Home: React.FC = () => {
   const [previousGameId, setPreviousGameId] = useState<string | null>(null)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [isLoadingGame, setIsLoadingGame] = useState(true)
+  
+  // Attendance hook - only active when we have an open game
+  const { roster, isLoading: isLoadingRoster, isRegistering, registerAttendance } = useAttendance({
+    token,
+    gameId: openGame?.id || null,
+    pollInterval: 60000 // 60 second polling interval
+  })
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -216,15 +224,156 @@ const Home: React.FC = () => {
                   <MarkdownRenderer markdown={openGame.markdown} />
                 </div>
               </div>
-              <div id="attendance-actions" style={{ 
+              {/* Attendance Section */}
+              <div style={{ 
                 marginTop: '15px',
                 padding: '15px',
                 backgroundColor: 'rgba(255, 255, 255, 0.5)',
-                borderRadius: '4px',
-                textAlign: 'center',
-                color: '#666'
+                borderRadius: '4px'
               }}>
-                Attendance actions will appear here
+                <h5 style={{ margin: '0 0 15px 0', color: '#28a745' }}>
+                  📋 Your Attendance
+                </h5>
+                
+                {/* Attendance Buttons */}
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '8px', 
+                  marginBottom: '20px',
+                  flexWrap: 'wrap'
+                }}>
+                  <button
+                    onClick={() => registerAttendance('CONFIRMED')}
+                    disabled={isRegistering}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      backgroundColor: isRegistering ? '#ccc' : '#28a745',
+                      color: 'white',
+                      fontSize: '14px',
+                      cursor: isRegistering ? 'not-allowed' : 'pointer',
+                      minHeight: '36px',
+                      flex: 1,
+                      minWidth: '80px'
+                    }}
+                  >
+                    {isRegistering ? '...' : "I'm In 🏈"}
+                  </button>
+                  <button
+                    onClick={() => registerAttendance('WAITING')}
+                    disabled={isRegistering}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      backgroundColor: isRegistering ? '#ccc' : '#ffc107',
+                      color: 'white',
+                      fontSize: '14px',
+                      cursor: isRegistering ? 'not-allowed' : 'pointer',
+                      minHeight: '36px',
+                      flex: 1,
+                      minWidth: '80px'
+                    }}
+                  >
+                    {isRegistering ? '...' : 'Wait-list ⏳'}
+                  </button>
+                  <button
+                    onClick={() => registerAttendance('OUT')}
+                    disabled={isRegistering}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      backgroundColor: isRegistering ? '#ccc' : '#dc3545',
+                      color: 'white',
+                      fontSize: '14px',
+                      cursor: isRegistering ? 'not-allowed' : 'pointer',
+                      minHeight: '36px',
+                      flex: 1,
+                      minWidth: '80px'
+                    }}
+                  >
+                    {isRegistering ? '...' : "Can't Make It ❌"}
+                  </button>
+                </div>
+                
+                {/* Roster Display */}
+                {isLoadingRoster && !roster ? (
+                  <div style={{ textAlign: 'center', color: '#666' }}>
+                    Loading roster...
+                  </div>
+                ) : roster ? (
+                  <div>
+                    {/* Confirmed Players */}
+                    <div style={{ marginBottom: '15px' }}>
+                      <h6 style={{ margin: '0 0 8px 0', color: '#28a745' }}>
+                        ✅ Confirmed ({roster.confirmed.length}/24)
+                      </h6>
+                      {roster.confirmed.length > 0 ? (
+                        <div style={{ 
+                          display: 'flex', 
+                          flexWrap: 'wrap', 
+                          gap: '4px',
+                          fontSize: '12px'
+                        }}>
+                                                     {roster.confirmed.map((attendance) => (
+                             <span
+                               key={attendance.id}
+                               style={{
+                                 padding: '4px 8px',
+                                 backgroundColor: '#d4edda',
+                                 borderRadius: '12px',
+                                 color: '#155724',
+                                 fontSize: '12px'
+                               }}
+                             >
+                               {attendance.player.nickname}
+                             </span>
+                           ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          No confirmed players yet
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Waiting Players */}
+                    {roster.waiting.length > 0 && (
+                      <div>
+                        <h6 style={{ margin: '0 0 8px 0', color: '#ffc107' }}>
+                          ⏳ Wait-list ({roster.waiting.length})
+                        </h6>
+                        <div style={{ 
+                          display: 'flex', 
+                          flexWrap: 'wrap', 
+                          gap: '4px',
+                          fontSize: '12px'
+                        }}>
+                                                     {roster.waiting.map((attendance) => (
+                             <span
+                               key={attendance.id}
+                               style={{
+                                 padding: '4px 8px',
+                                 backgroundColor: '#fff3cd',
+                                 borderRadius: '12px',
+                                 color: '#856404',
+                                 fontSize: '12px'
+                               }}
+                             >
+                               {attendance.player.nickname}
+                             </span>
+                           ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#666', fontSize: '14px' }}>
+                    No roster data available
+                  </div>
+                )}
               </div>
             </div>
           ) : (

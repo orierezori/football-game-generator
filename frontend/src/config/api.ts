@@ -5,6 +5,7 @@ export const API_ENDPOINTS = {
   PROFILE: `${API_BASE_URL}/api/profile`,
   ADMIN_GAME: `${API_BASE_URL}/api/admin/game`,
   OPEN_GAME: `${API_BASE_URL}/api/game/open`,
+  GAME_ATTENDANCE: (gameId: string) => `${API_BASE_URL}/api/game/${gameId}/attendance`,
 } as const
 
 export { API_BASE_URL } 

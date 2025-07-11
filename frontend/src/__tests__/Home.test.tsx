@@ -274,7 +274,7 @@ describe('Home Component - Markdown Rendering', () => {
     expect(timeElement).toBeInTheDocument()
   })
 
-  it('shows attendance actions placeholder', async () => {
+  it('shows attendance section with buttons', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(mockUserResponse as any)
       .mockResolvedValueOnce(mockGameResponse('game_1') as any)
@@ -285,9 +285,16 @@ describe('Home Component - Markdown Rendering', () => {
       expect(screen.getByText('🏈 Game Scheduled!')).toBeInTheDocument()
     })
 
-    const attendanceSection = screen.getByText('Attendance actions will appear here')
-    expect(attendanceSection).toBeInTheDocument()
-    expect(attendanceSection.closest('div')).toHaveAttribute('id', 'attendance-actions')
+    // Check for attendance section
+    expect(screen.getByText('📋 Your Attendance')).toBeInTheDocument()
+    
+    // Check for attendance buttons
+    expect(screen.getByText("I'm In 🏈")).toBeInTheDocument()
+    expect(screen.getByText('Wait-list ⏳')).toBeInTheDocument()
+    expect(screen.getByText("Can't Make It ❌")).toBeInTheDocument()
+    
+    // Check for roster display (should show "No roster data available" initially)
+    expect(screen.getByText('No roster data available')).toBeInTheDocument()
   })
 })
 
