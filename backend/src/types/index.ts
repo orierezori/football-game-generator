@@ -58,7 +58,31 @@ export interface RegisterAttendanceRequest {
   action: AttendanceStatus
 }
 
+export interface GuestPlayer {
+  id: string
+  gameId: string
+  inviterId: string
+  fullName: string
+  selfRating: number
+  primaryPosition: 'GK' | 'DEF' | 'MID' | 'ATT'
+  secondaryPosition?: 'GK' | 'DEF' | 'MID' | 'ATT'
+  status: 'CONFIRMED' | 'WAITING'
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateGuestPlayerRequest {
+  fullName: string
+  selfRating: number
+  primaryPosition: 'GK' | 'DEF' | 'MID' | 'ATT'
+  secondaryPosition?: 'GK' | 'DEF' | 'MID' | 'ATT'
+}
+
 export interface GameRoster {
   confirmed: (Attendance & { player: Profile })[]
   waiting: (Attendance & { player: Profile })[]
+  guests: {
+    confirmed: (GuestPlayer & { inviter: Profile })[]
+    waiting: (GuestPlayer & { inviter: Profile })[]
+  }
 } 

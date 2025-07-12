@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { User, Game } from '../types/profile'
+import { User, Game, GuestFormData, AttendanceStatus } from '../types/profile'
 import { API_ENDPOINTS } from '../config/api'
 import { errorToast, successToast } from '../utils/errorToast'
 import MarkdownRenderer from '../components/MarkdownRenderer'
+import AddGuestModal from '../components/AddGuestModal'
 import { useAttendance } from '../hooks/useAttendance'
 
 const Home: React.FC = () => {
@@ -15,9 +16,19 @@ const Home: React.FC = () => {
   const [previousGameId, setPreviousGameId] = useState<string | null>(null)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [isLoadingGame, setIsLoadingGame] = useState(true)
+  const [isAddGuestModalOpen, setIsAddGuestModalOpen] = useState(false)
+  const [showGuestRemovalDialog, setShowGuestRemovalDialog] = useState(false)
   
   // Attendance hook - only active when we have an open game
-  const { roster, isLoading: isLoadingRoster, isRegistering, registerAttendance } = useAttendance({
+  const { 
+    roster, 
+    isLoading: isLoadingRoster, 
+    isRegistering, 
+    registerAttendance,
+    addGuest,
+    deleteGuest,
+    isManagingGuests
+  } = useAttendance({
     token,
     gameId: openGame?.id || null,
     pollInterval: 60000 // 60 second polling interval
@@ -120,6 +131,46 @@ const Home: React.FC = () => {
       minute: '2-digit'
     })
   }
+
+  const handleAddGuest = async (guestData: GuestFormData) => {
+    await addGuest(guestData)
+  }
+
+  const handleDeleteGuest = async (guestId: string) => {
+    if (window.confirm('Are you sure you want to remove this guest?')) {
+      await deleteGuest(guestId)
+    }
+  }
+
+  const handleAttendanceChange = async (action: AttendanceStatus) => {
+    const result = await registerAttendance(action)
+    if (result.requiresGuestRemovalDialog) {
+      setShowGuestRemovalDialog(true)
+    }
+  }
+
+  const handleGuestRemovalConfirm = async () => {
+    // Remove all guests for the current user
+    for (const guest of userGuests) {
+      await deleteGuest(guest.id)
+    }
+    setShowGuestRemovalDialog(false)
+  }
+
+  const handleGuestRemovalCancel = () => {
+    setShowGuestRemovalDialog(false)
+  }
+
+  // Check if current user is registered for the game
+  const userAttendance = roster?.confirmed.find(att => att.playerId === user?.userId) ||
+                        roster?.waiting.find(att => att.playerId === user?.userId)
+  const isUserRegistered = userAttendance && userAttendance.status !== 'OUT'
+
+  // Get current user's guests
+  const userGuests = roster ? [
+    ...roster.guests.confirmed.filter(guest => guest.inviterId === user?.userId),
+    ...roster.guests.waiting.filter(guest => guest.inviterId === user?.userId)
+  ] : []
 
   return (
     <div style={{ 
@@ -242,61 +293,155 @@ const Home: React.FC = () => {
                   marginBottom: '20px',
                   flexWrap: 'wrap'
                 }}>
+                  {/* Show "I'm In" button only if player is not registered */}
+                  {!isUserRegistered && (
+                    <button
+                      onClick={() => handleAttendanceChange('CONFIRMED')}
+                      disabled={isRegistering}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: isRegistering ? '#ccc' : '#28a745',
+                        color: 'white',
+                        fontSize: '14px',
+                        cursor: isRegistering ? 'not-allowed' : 'pointer',
+                        minHeight: '36px',
+                        flex: 1,
+                        minWidth: '80px'
+                      }}
+                    >
+                      {isRegistering ? '...' : "I'm In 🏈"}
+                    </button>
+                  )}
+                  {/* Show "Can't Make It" button only if player is registered */}
+                  {isUserRegistered && (
+                    <button
+                      onClick={() => handleAttendanceChange('OUT')}
+                      disabled={isRegistering}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: isRegistering ? '#ccc' : '#dc3545',
+                        color: 'white',
+                        fontSize: '14px',
+                        cursor: isRegistering ? 'not-allowed' : 'pointer',
+                        minHeight: '36px',
+                        flex: 1,
+                        minWidth: '120px'
+                      }}
+                    >
+                      {isRegistering ? '...' : "Can't Make It ❌"}
+                    </button>
+                  )}
+                </div>
+
+                {/* Add Friend Button */}
+                <div style={{ marginBottom: '20px' }}>
                   <button
-                    onClick={() => registerAttendance('CONFIRMED')}
-                    disabled={isRegistering}
+                    onClick={() => setIsAddGuestModalOpen(true)}
+                    disabled={isManagingGuests}
                     style={{
                       padding: '8px 16px',
                       borderRadius: '4px',
-                      border: 'none',
-                      backgroundColor: isRegistering ? '#ccc' : '#28a745',
-                      color: 'white',
+                      border: '1px solid #28a745',
+                      backgroundColor: isManagingGuests ? '#ccc' : 'white',
+                      color: isManagingGuests ? 'white' : '#28a745',
                       fontSize: '14px',
-                      cursor: isRegistering ? 'not-allowed' : 'pointer',
+                      cursor: isManagingGuests ? 'not-allowed' : 'pointer',
                       minHeight: '36px',
-                      flex: 1,
-                      minWidth: '80px'
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
                     }}
                   >
-                    {isRegistering ? '...' : "I'm In 🏈"}
-                  </button>
-                  <button
-                    onClick={() => registerAttendance('WAITING')}
-                    disabled={isRegistering}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '4px',
-                      border: 'none',
-                      backgroundColor: isRegistering ? '#ccc' : '#ffc107',
-                      color: 'white',
-                      fontSize: '14px',
-                      cursor: isRegistering ? 'not-allowed' : 'pointer',
-                      minHeight: '36px',
-                      flex: 1,
-                      minWidth: '80px'
-                    }}
-                  >
-                    {isRegistering ? '...' : 'Wait-list ⏳'}
-                  </button>
-                  <button
-                    onClick={() => registerAttendance('OUT')}
-                    disabled={isRegistering}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '4px',
-                      border: 'none',
-                      backgroundColor: isRegistering ? '#ccc' : '#dc3545',
-                      color: 'white',
-                      fontSize: '14px',
-                      cursor: isRegistering ? 'not-allowed' : 'pointer',
-                      minHeight: '36px',
-                      flex: 1,
-                      minWidth: '80px'
-                    }}
-                  >
-                    {isRegistering ? '...' : "Can't Make It ❌"}
+                    👥 {isManagingGuests ? 'Adding...' : 'Add Friend'}
                   </button>
                 </div>
+
+                {/* User's Guests Display */}
+                {userGuests.length > 0 && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <h6 style={{ margin: '0 0 8px 0', color: '#17a2b8' }}>
+                      👥 Your Friends ({userGuests.length})
+                    </h6>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}>
+                      {userGuests.map((guest) => (
+                        <div
+                          key={guest.id}
+                          style={{
+                            padding: '8px 12px',
+                            backgroundColor: guest.status === 'CONFIRMED' ? '#d1ecf1' : '#fff3cd',
+                            borderRadius: '8px',
+                            border: `1px solid ${guest.status === 'CONFIRMED' ? '#17a2b8' : '#ffc107'}`,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '14px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontWeight: 'bold' }}>{guest.fullName}</span>
+                            <span style={{ 
+                              padding: '2px 6px',
+                              backgroundColor: '#007bff',
+                              color: 'white',
+                              borderRadius: '10px',
+                              fontSize: '11px'
+                            }}>
+                              {guest.primaryPosition}
+                            </span>
+                            {guest.secondaryPosition && (
+                              <span style={{ 
+                                padding: '2px 6px',
+                                backgroundColor: '#6c757d',
+                                color: 'white',
+                                borderRadius: '10px',
+                                fontSize: '11px'
+                              }}>
+                                {guest.secondaryPosition}
+                              </span>
+                            )}
+                            <span style={{ 
+                              padding: '2px 6px',
+                              backgroundColor: '#28a745',
+                              color: 'white',
+                              borderRadius: '10px',
+                              fontSize: '11px'
+                            }}>
+                              ⭐{guest.selfRating}
+                            </span>
+                            {guest.status === 'WAITING' && (
+                              <span style={{ color: '#856404', fontSize: '12px' }}>
+                                (Wait-list)
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleDeleteGuest(guest.id)}
+                            disabled={isManagingGuests}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#dc3545',
+                              cursor: isManagingGuests ? 'not-allowed' : 'pointer',
+                              padding: '4px',
+                              fontSize: '16px'
+                            }}
+                            title="Remove friend"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 {/* Roster Display */}
                 {isLoadingRoster && !roster ? (
@@ -308,7 +453,7 @@ const Home: React.FC = () => {
                     {/* Confirmed Players */}
                     <div style={{ marginBottom: '15px' }}>
                       <h6 style={{ margin: '0 0 8px 0', color: '#28a745' }}>
-                        ✅ Confirmed ({roster.confirmed.length}/24)
+                        ✅ Confirmed ({roster.confirmed.length + roster.guests.confirmed.length}/24)
                       </h6>
                       {roster.confirmed.length > 0 ? (
                         <div style={{ 
@@ -403,23 +548,40 @@ const Home: React.FC = () => {
               🔧 Admin Tools
             </h3>
             <p style={{ color: '#856404', margin: '0 0 15px 0' }}>
-              You have admin access to manage games.
+              You have admin access to manage games and users.
             </p>
-            <button
-              onClick={() => navigate('/admin/create-game')}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: 'bold'
-              }}
-            >
-              Create New Game
-            </button>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => navigate('/admin/create-game')}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#28a745',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold'
+                }}
+              >
+                Create New Game
+              </button>
+              <button
+                onClick={() => navigate('/admin/users')}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold'
+                }}
+              >
+                Manage Users
+              </button>
+            </div>
           </div>
         )}
         
@@ -438,6 +600,78 @@ const Home: React.FC = () => {
           </ul>
         </div>
       </div>
+
+      {/* Guest Removal Dialog */}
+      {showGuestRemovalDialog && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '20px',
+            maxWidth: '400px',
+            width: '100%'
+          }}>
+            <h3 style={{ margin: '0 0 16px 0' }}>Remove Your Friends?</h3>
+            <p style={{ margin: '0 0 20px 0', color: '#666' }}>
+              You've marked yourself as unavailable. Do you want to remove all your friends from this game as well?
+            </p>
+            <div style={{ 
+              display: 'flex', 
+              gap: '10px', 
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={handleGuestRemovalCancel}
+                style={{
+                  padding: '12px 20px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  backgroundColor: 'white',
+                  color: '#666',
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+              >
+                Keep Friends
+              </button>
+              <button
+                onClick={handleGuestRemovalConfirm}
+                style={{
+                  padding: '12px 20px',
+                  borderRadius: '4px',
+                  border: 'none',
+                  backgroundColor: '#dc3545',
+                  color: 'white',
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+              >
+                Remove Friends
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Guest Modal */}
+      <AddGuestModal
+        isOpen={isAddGuestModalOpen}
+        onClose={() => setIsAddGuestModalOpen(false)}
+        onSubmit={handleAddGuest}
+        isSubmitting={isManagingGuests}
+      />
     </div>
   )
 }

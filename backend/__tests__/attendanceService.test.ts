@@ -39,13 +39,13 @@ describe('AttendanceService', () => {
       
       // Create test profiles
       await client.query(`
-        INSERT INTO profiles (user_id, first_name, last_name, nickname, self_rating, primary_position) 
+        INSERT INTO profiles (user_id, first_name, last_name, nickname, rating, primary_position) 
         VALUES ($1, 'Test', 'Player1', 'testplayer1', 5, 'MID')
         ON CONFLICT (user_id) DO UPDATE SET nickname = 'testplayer1'
       `, [testUserId1])
       
       await client.query(`
-        INSERT INTO profiles (user_id, first_name, last_name, nickname, self_rating, primary_position) 
+        INSERT INTO profiles (user_id, first_name, last_name, nickname, rating, primary_position) 
         VALUES ($1, 'Test', 'Player2', 'testplayer2', 6, 'DEF')
         ON CONFLICT (user_id) DO UPDATE SET nickname = 'testplayer2'
       `, [testUserId2])
@@ -104,7 +104,7 @@ describe('AttendanceService', () => {
           `, [dummyUserId, `dummy${i}@example.com`])
           
           await client.query(`
-            INSERT INTO profiles (user_id, first_name, last_name, nickname, self_rating, primary_position) 
+            INSERT INTO profiles (user_id, first_name, last_name, nickname, rating, primary_position) 
             VALUES ($1, 'Dummy', 'Player', $2, 5, 'MID')
             ON CONFLICT (user_id) DO NOTHING
           `, [dummyUserId, `dummy${i}`])
@@ -218,6 +218,41 @@ describe('AttendanceService', () => {
       const roster = await attendanceService.getRoster(testGameId)
       expect(roster.confirmed).toHaveLength(0)
       expect(roster.waiting).toHaveLength(0)
+    })
+
+    it('should return requiresGuestRemovalDialog flag when inviter goes OUT with guests', async () => {
+      // First register as CONFIRMED
+      await attendanceService.registerAttendance(testUserId1, testGameId, 'CONFIRMED')
+      
+      // Add a guest for this player
+      const client = await pool.connect()
+      try {
+        await client.query(`
+          INSERT INTO guest_players (game_id, inviter_id, full_name, rating, primary_position, status)
+          VALUES ($1, $2, 'John Doe', 7, 'ATT', 'CONFIRMED')
+        `, [testGameId, testUserId1])
+      } finally {
+        client.release()
+      }
+      
+      // Then change to OUT
+      const result = await attendanceService.registerAttendance(testUserId1, testGameId, 'OUT')
+      
+      expect(result.confirmed).toHaveLength(0)
+      expect(result.waiting).toHaveLength(0)
+      expect(result.requiresGuestRemovalDialog).toBe(true)
+    })
+
+    it('should not return requiresGuestRemovalDialog flag when inviter goes OUT without guests', async () => {
+      // First register as CONFIRMED
+      await attendanceService.registerAttendance(testUserId1, testGameId, 'CONFIRMED')
+      
+      // Then change to OUT (no guests)
+      const result = await attendanceService.registerAttendance(testUserId1, testGameId, 'OUT')
+      
+      expect(result.confirmed).toHaveLength(0)
+      expect(result.waiting).toHaveLength(0)
+      expect(result.requiresGuestRemovalDialog).toBeUndefined()
     })
   })
 

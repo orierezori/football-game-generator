@@ -40,13 +40,13 @@ describe('Attendance Endpoints', () => {
       
       // Create test profiles
       await client.query(`
-        INSERT INTO profiles (user_id, first_name, last_name, nickname, self_rating, primary_position) 
+        INSERT INTO profiles (user_id, first_name, last_name, nickname, rating, primary_position) 
         VALUES ($1, 'Test', 'Player', 'testplayer', 5, 'MID')
         ON CONFLICT (user_id) DO UPDATE SET nickname = 'testplayer'
       `, [testPlayerId])
       
       await client.query(`
-        INSERT INTO profiles (user_id, first_name, last_name, nickname, self_rating, primary_position) 
+        INSERT INTO profiles (user_id, first_name, last_name, nickname, rating, primary_position) 
         VALUES ($1, 'Test', 'Player2', 'testplayer2', 6, 'DEF')
         ON CONFLICT (user_id) DO UPDATE SET nickname = 'testplayer2'
       `, [testPlayerId2])

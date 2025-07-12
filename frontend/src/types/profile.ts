@@ -74,9 +74,49 @@ export interface Attendance {
   player: Profile
 }
 
+export interface GuestPlayer {
+  id: string
+  gameId: string
+  inviterId: string
+  fullName: string
+  selfRating: number
+  primaryPosition: Position
+  secondaryPosition?: Position
+  status: 'CONFIRMED' | 'WAITING'
+  createdAt: string
+  updatedAt: string
+  inviter: Profile
+}
+
+export interface CreateGuestPlayerRequest {
+  fullName: string
+  selfRating: number
+  primaryPosition: Position
+  secondaryPosition?: Position
+}
+
+export interface GuestFormData {
+  fullName: string
+  selfRating: number
+  primaryPosition: Position
+  secondaryPosition?: Position
+}
+
+export interface GuestFormErrors {
+  fullName?: string
+  selfRating?: string
+  primaryPosition?: string
+  secondaryPosition?: string
+  submit?: string
+}
+
 export interface GameRoster {
   confirmed: Attendance[]
   waiting: Attendance[]
+  guests: {
+    confirmed: GuestPlayer[]
+    waiting: GuestPlayer[]
+  }
 }
 
 export interface RegisterAttendanceRequest {

@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Home from './pages/Home'
 import CreateGameForm from './components/CreateGameForm'
+import AdminUsers from './pages/AdminUsers'
 
 function App() {
   return (
@@ -27,6 +28,14 @@ function App() {
             element={
               <RequireProfile>
                 <CreateGameForm />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <RequireProfile>
+                <AdminUsers />
               </RequireProfile>
             }
           />
