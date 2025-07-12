@@ -222,6 +222,7 @@ function createApp() {
       }
 
       // Validate date is in the future (optional check)
+      // Note: We treat the incoming date as Amsterdam time (no timezone conversion)
       const gameDate = new Date(date)
       if (isNaN(gameDate.getTime())) {
         return res.status(400).json({ 

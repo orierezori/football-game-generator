@@ -23,7 +23,7 @@ export class GameService {
       `
       
       const values = [
-        gameData.date,
+        gameData.date, // Treated as Amsterdam time (no timezone conversion)
         gameData.location,
         gameData.markdown,
         adminId

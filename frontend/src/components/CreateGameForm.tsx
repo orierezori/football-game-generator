@@ -5,8 +5,8 @@ import { CreateGameFormData, CreateGameFormErrors } from '../types/profile'
 import { errorToast } from '../utils/errorToast'
 import { API_ENDPOINTS } from '../config/api'
 
-// Helper function to get next Wednesday at 20:30 Amsterdam time
-const getNextWednesday = (): Date => {
+// Helper function to get next Wednesday at 20:30 
+const getNextWednesday = (): string => {
   const now = new Date()
   const dayOfWeek = now.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   const wednesday = 3 // Wednesday is day 3
@@ -16,7 +16,7 @@ const getNextWednesday = (): Date => {
   
   // If today is Wednesday, check if it's before 20:30 Amsterdam time
   if (daysUntilWednesday === 0) {
-    // Create a date representing current time in Amsterdam
+    // Get current time in Amsterdam
     const amsterdamNow = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Amsterdam"}))
     
     if (amsterdamNow.getHours() < 20 || (amsterdamNow.getHours() === 20 && amsterdamNow.getMinutes() < 30)) {
@@ -28,49 +28,20 @@ const getNextWednesday = (): Date => {
     }
   }
   
-  // If daysUntilWednesday is 0, we want today, otherwise we want next Wednesday
-  if (daysUntilWednesday === 0) {
-    daysUntilWednesday = 0
-  }
-  
   const nextWednesday = new Date(now)
   nextWednesday.setDate(now.getDate() + daysUntilWednesday)
   
-  // Create the datetime at 20:30 Amsterdam time
-  // We'll use a simple approach: assume 20:30 Amsterdam time is UTC+1 (standard) or UTC+2 (daylight)
-  // For March-October, Amsterdam is UTC+2 (CEST), November-March is UTC+1 (CET)
-  const isAmsterdamDST = isAmsterdamInDST(nextWednesday)
-  const amsterdamOffset = isAmsterdamDST ? 2 : 1 // hours ahead of UTC
+  // Format as YYYY-MM-DD and append 20:30 to ensure the datetime-local shows 20:30
+  const year = nextWednesday.getFullYear()
+  const month = String(nextWednesday.getMonth() + 1).padStart(2, '0')
+  const day = String(nextWednesday.getDate()).padStart(2, '0')
   
-  // Create the date at 20:30 Amsterdam time by adjusting for the offset
-  const utcWednesday = new Date(nextWednesday)
-  utcWednesday.setUTCHours(20 - amsterdamOffset, 30, 0, 0)
-  
-  return utcWednesday
-}
-
-// Helper function to determine if Amsterdam is in daylight saving time
-const isAmsterdamInDST = (date: Date): boolean => {
-  const year = date.getFullYear()
-  
-  // DST in Amsterdam starts on the last Sunday of March at 2 AM
-  // DST in Amsterdam ends on the last Sunday of October at 3 AM
-  const dstStart = getLastSundayOfMonth(year, 2) // March is month 2 (0-indexed)
-  const dstEnd = getLastSundayOfMonth(year, 9) // October is month 9 (0-indexed)
-  
-  return date >= dstStart && date < dstEnd
-}
-
-// Helper function to get the last Sunday of a given month
-const getLastSundayOfMonth = (year: number, month: number): Date => {
-  const lastDay = new Date(year, month + 1, 0) // Last day of the month
-  const lastSunday = new Date(lastDay)
-  lastSunday.setDate(lastDay.getDate() - lastDay.getDay()) // Go back to Sunday
-  return lastSunday
+  return `${year}-${month}-${day}T20:30`
 }
 
 // Helper function to format date and time for the template
 const formatDateTime = (date: Date): string => {
+  // Format the date as-is, treating it as Amsterdam time
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -78,9 +49,7 @@ const formatDateTime = (date: Date): string => {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Amsterdam',
-    timeZoneName: 'short'
-  })
+  }) + ' (Amsterdam time)'
 }
 
 // Default location
@@ -105,12 +74,12 @@ const CreateGameForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Calculate default values
-  const defaultDate = getNextWednesday()
+  const defaultDateString = getNextWednesday()
   const defaultLocation = DEFAULT_LOCATION
-  const defaultMarkdown = getDefaultMarkdown(defaultDate, defaultLocation)
+  const defaultMarkdown = getDefaultMarkdown(new Date(defaultDateString), defaultLocation)
   
   const [formData, setFormData] = useState<CreateGameFormData>({
-    date: defaultDate.toISOString().slice(0, 16), // Format for datetime-local input
+    date: defaultDateString, // Already in datetime-local format
     location: defaultLocation,
     markdown: defaultMarkdown
   })
@@ -178,7 +147,7 @@ const CreateGameForm: React.FC = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          date: new Date(formData.date).toISOString(),
+          date: formData.date + ':00', // Add seconds to make it a complete ISO datetime string
           location: formData.location.trim(),
           markdown: formData.markdown.trim()
         })
@@ -219,11 +188,7 @@ const CreateGameForm: React.FC = () => {
     }
   }
 
-  // Format date for datetime-local input
-  const formatDateForInput = (date: string) => {
-    if (!date) return ''
-    return new Date(date).toISOString().slice(0, 16)
-  }
+
 
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
@@ -251,7 +216,7 @@ const CreateGameForm: React.FC = () => {
           <input
             id="date"
             type="datetime-local"
-            value={formatDateForInput(formData.date)}
+            value={formData.date}
             onChange={(e) => handleInputChange('date', e.target.value)}
             style={{
               width: '100%',
